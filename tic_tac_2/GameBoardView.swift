@@ -7,9 +7,21 @@
 
 import SwiftUI
 
-enum Player: String {
+enum Player: String, Codable {
     case x = "X"
     case o = "O"
+}
+
+struct GameState: Codable {
+    let currentPlayer: Player
+    let board: [[Player?]]
+    let grid: [[Int]]
+    let gridCenter: [Int]
+    let activeButton: [Int]
+    let gameState: String
+    let winner: Player?
+    let isDraw: Bool
+    let winningCells: Set<[Int]>
 }
 
 struct GameBoardView: View {
@@ -24,6 +36,8 @@ struct GameBoardView: View {
     @State private var winner: Player?
     @State private var isDraw: Bool = false
     @State private var winningCells: Set<[Int]> = []
+    
+    private let saveKey = "tic_tac_two_state"
     
     var body: some View {
         VStack(spacing: 10) {
@@ -46,18 +60,7 @@ struct GameBoardView: View {
                                     gameState = "move"
                                     activeButton = (row, column)
                                 } else if (gameState == "move") {
-                                    if ((row, column) == activeButton) {
-                                        activeButton = (6,6)
-                                        gameState = "add"
-                                    } else if (board[row][column] == nil) {
-                                        board[row][column] = currentPlayer
-                                        board[activeButton.0][activeButton.1] = nil
-                                        activeButton = (6,6)
-                                        gameState = "add"
-                                        currentPlayer =
-                                            currentPlayer == .x ? .o : .x
-                                        checkForWinner()
-                                    }
+                                    moveButton(row, column)
                                 } else if (gameState == "add") {
                                     if board[row][column] == nil {
                                         board[row][column] = currentPlayer
@@ -83,11 +86,7 @@ struct GameBoardView: View {
                                 }
                             }
                         )
-                        .disabled((gameState == "add" && (board[row][column] != nil && board[row][column] != currentPlayer)) ||
-                                  winner != nil ||
-                                  ((row, column) == gridCenter && gameState == "grid") ||
-                                  !grid.contains(where: { $0 == (row, column) }) ||
-                                  (gameState == "grid" && (row == 0 || row == 4 || column == 0 || column == 4)))
+                        .disabled(disableButtons(row, column))
                         .scaleEffect(
                             winningCells.contains([row, column]) ? 1.2 : 1.0
                         )
@@ -147,6 +146,15 @@ struct GameBoardView: View {
         }
     }
     
+    func disableButtons(_ row: Int, _ column: Int) -> Bool {
+        return (gameState == "add" && (board[row][column] != nil && board[row][column] != currentPlayer)) ||
+        winner != nil ||
+        ((row, column) == gridCenter && gameState == "grid") ||
+        !grid.contains(where: { $0 == (row, column) }) ||
+        (gameState == "grid" && (row == 0 || row == 4 || column == 0 || column == 4))
+        || (gameState == "move" && board[row][column] != nil && activeButton != (row, column))
+    }
+    
     func changeGridLocation(_ row: Int, _ col: Int) {
         prevCenter = gridCenter
         gridCenter = (row, col)
@@ -159,6 +167,21 @@ struct GameBoardView: View {
         currentPlayer =
             currentPlayer == .x ? .o : .x
         checkForWinner()
+    }
+    
+    func moveButton(_ row: Int, _ col: Int) {
+        if ((row, col) == activeButton) {
+            activeButton = (6,6)
+            gameState = "add"
+        } else if (board[row][col] == nil) {
+            board[row][col] = currentPlayer
+            board[activeButton.0][activeButton.1] = nil
+            activeButton = (6,6)
+            gameState = "add"
+            currentPlayer =
+                currentPlayer == .x ? .o : .x
+            checkForWinner()
+        }
     }
     
     func checkForWinner() {
@@ -228,6 +251,53 @@ struct GameBoardView: View {
             return .yellow
         }
         return .gray
+    }
+    
+    func saveGame() {
+        var gridList = [[Int]]()
+        for button in grid {
+            let el = [button.0, button.1]
+            gridList.append(el)
+        }
+        
+        let gameState = GameState(
+            currentPlayer: currentPlayer,
+            board: board,
+            grid: gridList,
+            gridCenter: [gridCenter.0, gridCenter.1],
+            activeButton: [activeButton.0, activeButton.1],
+            gameState: gameState,
+            winner: winner,
+            isDraw: isDraw,
+            winningCells: winningCells
+        )
+        
+        if let data = try? JSONEncoder().encode(gameState) {
+            UserDefaults.standard.set(data, forKey: saveKey)
+        }
+    }
+    
+    func loadGameState() {
+        guard let data = UserDefaults.standard.data(forKey: saveKey) else { return }
+        do {
+            var gridTuple = Array<(Int, Int)>()
+            
+            let state = try JSONDecoder().decode(GameState.self, from: data)
+            for button in state.grid {
+                gridTuple.append((button[0], button[1]))
+            }
+            currentPlayer = state.currentPlayer
+            board = state.board
+            grid = gridTuple
+            gridCenter = (state.gridCenter[0], state.gridCenter[1])
+            activeButton = (state.activeButton[0], state.activeButton[1])
+            gameState = state.gameState
+            winner = state.winner
+            isDraw = state.isDraw
+            winningCells = state.winningCells
+        } catch {
+            print("Failed to load game state: \(error)")
+        }
     }
 }
 
