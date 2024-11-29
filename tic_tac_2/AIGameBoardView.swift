@@ -140,7 +140,7 @@ struct AIGameBoardView: View {
                                                         .frame(width: 45, height: 45)
                                                         .shadow(radius: 5)
                                                     Text(board[row][column]?.rawValue ?? " ")
-                                                        .font(.largeTitle)
+                                                        .font(.title2)
                                                         .foregroundColor(board[row][column] == .x ? .red :(board[row][column] == .o ? .blue : .white))
                                                 }
                                             }
