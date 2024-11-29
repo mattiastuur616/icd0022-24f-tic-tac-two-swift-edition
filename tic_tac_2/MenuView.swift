@@ -13,8 +13,18 @@ struct MenuView: View {
         NavigationView {
             VStack {
                 Text("Welcome to Tic Tac Two")
+                    .font(.title)
+                NavigationLink(destination: AIGameBoardView()) {
+                    Text("1 player")
+                        .font(.title)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .navigationBarTitle("Home", displayMode: .inline)
                 NavigationLink(destination: GameBoardView()) {
-                    Text("Play")
+                    Text("2 player")
                         .font(.title)
                         .padding()
                         .background(Color.blue)

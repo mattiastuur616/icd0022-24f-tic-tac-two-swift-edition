@@ -1,18 +1,13 @@
 //
-//  ContentView.swift
+//  AIGameBoardView.swift
 //  tic_tac_2
 //
-//  Created by Mattias Tüür on 22.11.2024.
+//  Created by Mattias Tüür on 29.11.2024.
 //
 
 import SwiftUI
 
-enum Player: String {
-    case x = "X"
-    case o = "O"
-}
-
-struct GameBoardView: View {
+struct AIGameBoardView: View {
     
     @State private var currentPlayer: Player = .x
     @State private var board: [[Player?]] = Array(repeating: Array(repeating: nil, count: 5), count: 5)
@@ -31,6 +26,8 @@ struct GameBoardView: View {
     
     @State private var xButtons: Int = 4
     @State private var oButtons: Int = 4
+    
+    @State private var aiTurn: Bool = false
         
     private let settingsKey = "initialButtons"
     private let saveKey = "tic_tac_two_state"
@@ -102,7 +99,7 @@ struct GameBoardView: View {
                                                     moveButton(row, column)
                                                     turnAmount += 1
                                                 } else if (gameState == "add") {
-                                                    if ((currentPlayer == .x && xButtons > 0) || (currentPlayer == .o && oButtons > 0)) {
+                                                    if ((currentPlayer == .x && xButtons > 0)) {
                                                         if board[row][column] == nil {
                                                             prevState = gameState
                                                             board[row][column] = currentPlayer
@@ -116,12 +113,22 @@ struct GameBoardView: View {
                                                             checkForWinner()
                                                             turnAmount += 1
                                                             saveGameState()
+                                                            aiTurn = true
+                                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                                                opponentsMove()
+                                                                aiTurn = false
+                                                            }
                                                         }
                                                     }
                                                 } else if (gameState == "grid" && turnAmount >= 4) {
                                                     prevState = gameState
                                                     changeGridLocation(row, column)
                                                     turnAmount += 1
+                                                    aiTurn = true
+                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                                        opponentsMove()
+                                                        aiTurn = false
+                                                    }
                                                 }
                                             },
                                             label: {
@@ -198,12 +205,22 @@ struct GameBoardView: View {
                                                     checkForWinner()
                                                     turnAmount += 1
                                                     saveGameState()
+                                                    aiTurn = true
+                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                                        opponentsMove()
+                                                        aiTurn = false
+                                                    }
                                                 }
                                             }
                                         } else if (gameState == "grid" && turnAmount >= 4) {
                                             prevState = gameState
                                             changeGridLocation(row, column)
                                             turnAmount += 1
+                                            aiTurn = true
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                                opponentsMove()
+                                                aiTurn = false
+                                            }
                                         }
                                     },
                                     label: {
@@ -271,6 +288,64 @@ struct GameBoardView: View {
             }
         }
     }
+    
+    private func opponentsMove() {
+        if (winner == nil) {
+            var allGridSlots: [(Int, Int)] = []
+            var allFilledSlots: [(Int, Int)] = []
+            var allEmptySlots: [(Int, Int)] = []
+            var allTurns: [String] = []
+            for i in 0..<grid.count {
+                if (board[grid[i].0][grid[i].1]?.rawValue == "O") {
+                    allFilledSlots.append(grid[i])
+                } else if (board[grid[i].0][grid[i].1] == nil) {
+                    allEmptySlots.append(grid[i])
+                }
+                if ((grid[i].0, grid[i].1) != gridCenter && grid[i].0 > 0 && grid[i].0 < 4 && grid[i].1 > 0 && grid[i].1 < 4) {
+                    allGridSlots.append(grid[i])
+                }
+            }
+            if (prevState != "grid" && turnAmount >= 4) {
+                allTurns.append("grid")
+            }
+            if (allFilledSlots.count > 0 && allFilledSlots.count < 9 && turnAmount >= 4) {
+                allTurns.append("move")
+            }
+            if (allEmptySlots.count > 0 && allEmptySlots.count < 9 && oButtons > 0) {
+                allTurns.append("add")
+            }
+            if (allTurns.count == 0) {
+                isDraw = true
+                return
+            }
+            let randomTurn = Int.random(in: 0..<allTurns.count)
+            if (allTurns[randomTurn] == "grid") {
+                let randomGridSlot = Int.random(in: 0..<allGridSlots.count)
+                prevState = "grid"
+                changeGridLocation(allGridSlots[randomGridSlot].0, allGridSlots[randomGridSlot].1)
+                turnAmount += 1
+            } else if (allTurns[randomTurn] == "move") {
+                let randomButton = Int.random(in: 0..<allFilledSlots.count)
+                let randomSlot = Int.random(in: 0..<allEmptySlots.count)
+                prevState = "move"
+                board[allFilledSlots[randomButton].0][allFilledSlots[randomButton].1] = nil
+                board[allEmptySlots[randomSlot].0][allEmptySlots[randomSlot].1] = currentPlayer
+                gameState = "add"
+                currentPlayer = .x
+                checkForWinner()
+                turnAmount += 1
+            } else if (allTurns[randomTurn] == "add") {
+                let randomSlot = Int.random(in: 0..<allEmptySlots.count)
+                prevState = "add"
+                board[allEmptySlots[randomSlot].0][allEmptySlots[randomSlot].1] = currentPlayer
+                oButtons -= 1
+                currentPlayer = .x
+                checkForWinner()
+                turnAmount += 1
+                saveGameState()
+            }
+        }
+    }
 
     private func saveGameState() {
         UserDefaults.standard.set(xButtons, forKey: "xButtons")
@@ -307,7 +382,7 @@ struct GameBoardView: View {
         ((row, column) == gridCenter && gameState == "grid") ||
         !grid.contains(where: { $0 == (row, column) }) ||
         (gameState == "grid" && (row == 0 || row == 4 || column == 0 || column == 4))
-        || (gameState == "move" && board[row][column] != nil && activeButton != (row, column))
+        || (gameState == "move" && board[row][column] != nil && activeButton != (row, column) || aiTurn)
     }
     
     func changeGridLocation(_ row: Int, _ col: Int) {
@@ -336,6 +411,11 @@ struct GameBoardView: View {
             currentPlayer =
                 currentPlayer == .x ? .o : .x
             checkForWinner()
+            aiTurn = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                opponentsMove()
+                aiTurn = false
+            }
         }
     }
     
@@ -415,7 +495,6 @@ struct GameBoardView: View {
     }
 }
 
-
-#Preview("Preview 1") {
-    GameBoardView()
+#Preview {
+    AIGameBoardView()
 }
