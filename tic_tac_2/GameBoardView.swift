@@ -7,21 +7,9 @@
 
 import SwiftUI
 
-enum Player: String, Codable {
+enum Player: String {
     case x = "X"
     case o = "O"
-}
-
-struct GameState: Codable {
-    let currentPlayer: Player
-    let board: [[Player?]]
-    let grid: [[Int]]
-    let gridCenter: [Int]
-    let activeButton: [Int]
-    let gameState: String
-    let winner: Player?
-    let isDraw: Bool
-    let winningCells: Set<[Int]>
 }
 
 struct GameBoardView: View {
@@ -32,120 +20,279 @@ struct GameBoardView: View {
     @State private var prevCenter = (0, 0)
     @State private var gridCenter = (2, 2)
     @State private var activeButton = (6, 6)
+    
     @State private var gameState = "add"
-    @State private var prevState = "add"
+    @State private var prevState = "begin"
+    
     @State private var turnAmount = 0
     @State private var winner: Player?
     @State private var isDraw: Bool = false
     @State private var winningCells: Set<[Int]> = []
     
+    @State private var xButtons: Int = 4
+    @State private var oButtons: Int = 4
+        
+    private let settingsKey = "initialButtons"
     private let saveKey = "tic_tac_two_state"
     
     var body: some View {
-        VStack(spacing: 10) {
-            Text("Tic-Tac-Two")
-                .font(.largeTitle)
-                .padding(.vertical)
-            
-            Spacer()
-            
-            Text("Player \(currentPlayer.rawValue.uppercased())'s turn")
-                .font(.title2)
-                .foregroundColor(currentPlayer == .x ? .red : .blue)
-            
-            ForEach(0..<5) { row in
-                HStack(spacing: 10) {
-                    ForEach(0..<5) { column in
-                        Button(
-                            action: {
-                                if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
-                                    prevState = gameState
-                                    gameState = "move"
-                                    activeButton = (row, column)
-                                    turnAmount += 1
-                                } else if (gameState == "move" && turnAmount >= 4) {
-                                    prevState = gameState
-                                    moveButton(row, column)
-                                    turnAmount += 1
-                                } else if (gameState == "add") {
-                                    if board[row][column] == nil {
-                                        prevState = gameState
-                                        board[row][column] = currentPlayer
-                                        currentPlayer =
-                                            currentPlayer == .x ? .o : .x
-                                        checkForWinner()
-                                        turnAmount += 1
-                                    }
-                                } else if (gameState == "grid" && turnAmount >= 4) {
-                                    prevState = gameState
-                                    changeGridLocation(row, column)
-                                    turnAmount += 1
-                                }
-                            },
-                            label: {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .foregroundColor(
-                                            currentColor(row, column)
+        GeometryReader { geometry in
+            let isLandscape = geometry.size.width > geometry.size.height
+            if isLandscape {
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        VStack(spacing: 5) {
+                            Text("Tic-Tac-Two")
+                                .font(.largeTitle)
+                                .padding(.vertical)
+                            Text("X buttons: \(xButtons)")
+                            Text("O buttons: \(oButtons)")
+                            
+                            HStack {
+                                Button("Grid", action: changeStateToGrid)
+                                    .foregroundColor(.white)
+                                    .padding(.vertical)
+                                    .frame(maxWidth: .infinity)
+                                    .background(gameState == "add" && prevState != "grid" && turnAmount >= 4 ? Color.blue : Color.gray)
+                                    .cornerRadius(10)
+                                    .disabled(winner != nil || gameState == "move" || prevState == "grid" || turnAmount < 4)
+                            }
+                            .padding()
+                            
+                            
+                            if let winner = winner {
+                                Text("Player \(winner.rawValue) wins!")
+                                    .foregroundColor(.green)
+                                    .scaleEffect(2)
+                                    .animation(.linear(duration: 0.5), value: winner)
+                                    .padding(.vertical)
+                            } else if isDraw {
+                                Text("It's a draw!")
+                                    .foregroundColor(.orange)
+                                    .scaleEffect(2)
+                                    .animation(.linear(duration: 0.5), value: isDraw)
+                                    .padding(.vertical)
+                            }
+                            
+                            Spacer()
+                            
+                            Button("Reset Game", action: resetGame)
+                                .foregroundColor(.white)
+                                .padding(.vertical)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                        }
+                        VStack(spacing: 5) {
+                            Text("Player \(currentPlayer.rawValue.uppercased())'s turn")
+                                .font(.title2)
+                                .foregroundColor(currentPlayer == .x ? .red : .blue)
+                            
+                            ForEach(0..<5) { row in
+                                HStack(spacing: 5) {
+                                    ForEach(0..<5) { column in
+                                        Button(
+                                            action: {
+                                                if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
+                                                    prevState = gameState
+                                                    gameState = "move"
+                                                    activeButton = (row, column)
+                                                    turnAmount += 1
+                                                } else if (gameState == "move" && turnAmount >= 4) {
+                                                    prevState = gameState
+                                                    moveButton(row, column)
+                                                    turnAmount += 1
+                                                } else if (gameState == "add") {
+                                                    if ((currentPlayer == .x && xButtons > 0) || (currentPlayer == .o && oButtons > 0)) {
+                                                        if board[row][column] == nil {
+                                                            prevState = gameState
+                                                            board[row][column] = currentPlayer
+                                                            if (currentPlayer == .x) {
+                                                                xButtons -= 1
+                                                            } else {
+                                                                oButtons -= 1
+                                                            }
+                                                            currentPlayer =
+                                                            currentPlayer == .x ? .o : .x
+                                                            checkForWinner()
+                                                            turnAmount += 1
+                                                            saveGameState()
+                                                        }
+                                                    }
+                                                } else if (gameState == "grid" && turnAmount >= 4) {
+                                                    prevState = gameState
+                                                    changeGridLocation(row, column)
+                                                    turnAmount += 1
+                                                }
+                                            },
+                                            label: {
+                                                ZStack {
+                                                    RoundedRectangle(cornerRadius: 10)
+                                                        .foregroundColor(
+                                                            currentColor(row, column)
+                                                        )
+                                                        .frame(width: 45, height: 45)
+                                                        .shadow(radius: 5)
+                                                    Text(board[row][column]?.rawValue ?? " ")
+                                                        .font(.largeTitle)
+                                                        .foregroundColor(board[row][column] == .x ? .red :(board[row][column] == .o ? .blue : .white))
+                                                }
+                                            }
                                         )
-                                        .frame(width: 60, height: 60)
-                                        .shadow(radius: 5)
-                                    Text(board[row][column]?.rawValue ?? " ")
-                                        .font(.largeTitle)
-                                        .foregroundColor(board[row][column] == .x ? .red :(board[row][column] == .o ? .blue : .white))
+                                        .disabled(disableButtons(row, column))
+                                        .scaleEffect(
+                                            winningCells.contains([row, column]) ? 1.2 : 1.0
+                                        )
+                                        .animation(
+                                            .easeInOut(duration: 1),
+                                            value: winningCells.contains([row, column])
+                                        )
+                                    }
                                 }
                             }
-                        )
-                        .disabled(disableButtons(row, column))
-                        .scaleEffect(
-                            winningCells.contains([row, column]) ? 1.2 : 1.0
-                        )
-                        .animation(
-                            .easeInOut(duration: 1),
-                            value: winningCells.contains([row, column])
-                        )
+                        }
                     }
                 }
+                .padding()
+                .onAppear {
+                    loadSettings()
+                }
+            } else {
+                VStack(spacing: 10) {
+                    Text("Tic-Tac-Two")
+                        .font(.largeTitle)
+                        .padding(.vertical)
+                    Text("X buttons: \(xButtons)")
+                    Text("O buttons: \(oButtons)")
+                    
+                    Spacer()
+                    
+                    Text("Player \(currentPlayer.rawValue.uppercased())'s turn")
+                        .font(.title2)
+                        .foregroundColor(currentPlayer == .x ? .red : .blue)
+                    
+                    ForEach(0..<5) { row in
+                        HStack(spacing: 10) {
+                            ForEach(0..<5) { column in
+                                Button(
+                                    action: {
+                                        if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
+                                            prevState = gameState
+                                            gameState = "move"
+                                            activeButton = (row, column)
+                                            turnAmount += 1
+                                        } else if (gameState == "move" && turnAmount >= 4) {
+                                            prevState = gameState
+                                            moveButton(row, column)
+                                            turnAmount += 1
+                                        } else if (gameState == "add") {
+                                            if ((currentPlayer == .x && xButtons > 0) || (currentPlayer == .o && oButtons > 0)) {
+                                                if board[row][column] == nil {
+                                                    prevState = gameState
+                                                    board[row][column] = currentPlayer
+                                                    if (currentPlayer == .x) {
+                                                        xButtons -= 1
+                                                    } else {
+                                                        oButtons -= 1
+                                                    }
+                                                    currentPlayer =
+                                                    currentPlayer == .x ? .o : .x
+                                                    checkForWinner()
+                                                    turnAmount += 1
+                                                    saveGameState()
+                                                }
+                                            }
+                                        } else if (gameState == "grid" && turnAmount >= 4) {
+                                            prevState = gameState
+                                            changeGridLocation(row, column)
+                                            turnAmount += 1
+                                        }
+                                    },
+                                    label: {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .foregroundColor(
+                                                    currentColor(row, column)
+                                                )
+                                                .frame(width: 60, height: 60)
+                                                .shadow(radius: 5)
+                                            Text(board[row][column]?.rawValue ?? " ")
+                                                .font(.largeTitle)
+                                                .foregroundColor(board[row][column] == .x ? .red :(board[row][column] == .o ? .blue : .white))
+                                        }
+                                    }
+                                )
+                                .disabled(disableButtons(row, column))
+                                .scaleEffect(
+                                    winningCells.contains([row, column]) ? 1.2 : 1.0
+                                )
+                                .animation(
+                                    .easeInOut(duration: 1),
+                                    value: winningCells.contains([row, column])
+                                )
+                            }
+                        }
+                    }
+                    
+                    HStack {
+                        Button("Grid", action: changeStateToGrid)
+                            .foregroundColor(.white)
+                            .padding(.vertical)
+                            .frame(maxWidth: .infinity)
+                            .background(gameState == "add" && prevState != "grid" && turnAmount >= 4 ? Color.blue : Color.gray)
+                            .cornerRadius(10)
+                            .disabled(winner != nil || gameState == "move" || prevState == "grid" || turnAmount < 4)
+                    }
+                    .padding()
+                    
+                    if let winner = winner {
+                        Text("Player \(winner.rawValue) wins!")
+                            .foregroundColor(.green)
+                            .scaleEffect(2)
+                            .animation(.linear(duration: 0.5), value: winner)
+                            .padding(.vertical)
+                    } else if isDraw {
+                        Text("It's a draw!")
+                            .foregroundColor(.orange)
+                            .scaleEffect(2)
+                            .animation(.linear(duration: 0.5), value: isDraw)
+                            .padding(.vertical)
+                    }
+                    
+                    Button("Reset Game", action: resetGame)
+                        .foregroundColor(.white)
+                        .padding(.vertical)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+                .padding()
+                .onAppear {
+                    loadSettings()
+                }
             }
-            
-            HStack {
-                Button("Grid", action: changeStateToGrid)
-                    .foregroundColor(.white)
-                    .padding(.vertical)
-                    .frame(maxWidth: .infinity)
-                    .background(gameState == "add" && prevState != "grid" && turnAmount >= 4 ? Color.blue : Color.gray)
-                    .cornerRadius(10)
-                    .disabled(winner != nil || gameState == "move" || prevState == "grid" || turnAmount < 4)
-            }
-            .padding()
-
-            
-            Spacer()
-            
-            if let winner = winner {
-                Text("Player \(winner.rawValue) wins!")
-                    .foregroundColor(.green)
-                    .scaleEffect(2)
-                    .animation(.linear(duration: 0.5), value: winner)
-                    .padding(.vertical)
-            } else if isDraw {
-                Text("It's a draw!")
-                    .foregroundColor(.orange)
-                    .scaleEffect(2)
-                    .animation(.linear(duration: 0.5), value: isDraw)
-                    .padding(.vertical)
-            }
-            
-            Spacer()
-            
-            Button("Reset Game", action: resetGame)
-                .foregroundColor(.white)
-                .padding(.vertical)
-                .frame(maxWidth: .infinity)
-                .background(Color.blue)
-                .cornerRadius(10)
         }
-        .padding()
+    }
+
+    private func saveGameState() {
+        UserDefaults.standard.set(xButtons, forKey: "xButtons")
+        UserDefaults.standard.set(oButtons, forKey: "oButtons")
+    }
+    
+    private func loadSettings() {
+        if (prevState == "begin") {
+            if let savedValue = UserDefaults.standard.value(forKey: settingsKey) as? Int {
+                xButtons = savedValue
+                oButtons = savedValue
+            }
+        } else {
+            if let savedXButtons = UserDefaults.standard.value(forKey: "xButtons") as? Int {
+                xButtons = savedXButtons
+            }
+            if let savedOButtons = UserDefaults.standard.value(forKey: "oButtons") as? Int {
+                oButtons = savedOButtons
+            }
+        }
     }
     
     func changeStateToGrid() {
@@ -248,6 +395,11 @@ struct GameBoardView: View {
         winner = nil
         grid = Array(arrayLiteral: (1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3))
         gridCenter = (2, 2)
+        prevState = "begin"
+        if let savedValue = UserDefaults.standard.value(forKey: settingsKey) as? Int {
+            xButtons = savedValue
+            oButtons = savedValue
+        }
     }
     
     func currentColor(_ row: Int, _ col: Int) -> Color {
@@ -261,53 +413,6 @@ struct GameBoardView: View {
             return .yellow
         }
         return .gray
-    }
-    
-    func saveGame() {
-        var gridList = [[Int]]()
-        for button in grid {
-            let el = [button.0, button.1]
-            gridList.append(el)
-        }
-        
-        let gameState = GameState(
-            currentPlayer: currentPlayer,
-            board: board,
-            grid: gridList,
-            gridCenter: [gridCenter.0, gridCenter.1],
-            activeButton: [activeButton.0, activeButton.1],
-            gameState: gameState,
-            winner: winner,
-            isDraw: isDraw,
-            winningCells: winningCells
-        )
-        
-        if let data = try? JSONEncoder().encode(gameState) {
-            UserDefaults.standard.set(data, forKey: saveKey)
-        }
-    }
-    
-    func loadGameState() {
-        guard let data = UserDefaults.standard.data(forKey: saveKey) else { return }
-        do {
-            var gridTuple = Array<(Int, Int)>()
-            
-            let state = try JSONDecoder().decode(GameState.self, from: data)
-            for button in state.grid {
-                gridTuple.append((button[0], button[1]))
-            }
-            currentPlayer = state.currentPlayer
-            board = state.board
-            grid = gridTuple
-            gridCenter = (state.gridCenter[0], state.gridCenter[1])
-            activeButton = (state.activeButton[0], state.activeButton[1])
-            gameState = state.gameState
-            winner = state.winner
-            isDraw = state.isDraw
-            winningCells = state.winningCells
-        } catch {
-            print("Failed to load game state: \(error)")
-        }
     }
 }
 
