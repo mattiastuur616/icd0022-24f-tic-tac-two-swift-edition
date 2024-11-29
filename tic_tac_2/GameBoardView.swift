@@ -33,6 +33,8 @@ struct GameBoardView: View {
     @State private var gridCenter = (2, 2)
     @State private var activeButton = (6, 6)
     @State private var gameState = "add"
+    @State private var prevState = "add"
+    @State private var turnAmount = 0
     @State private var winner: Player?
     @State private var isDraw: Bool = false
     @State private var winningCells: Set<[Int]> = []
@@ -56,20 +58,28 @@ struct GameBoardView: View {
                     ForEach(0..<5) { column in
                         Button(
                             action: {
-                                if (gameState == "add" && board[row][column] == currentPlayer) {
+                                if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
+                                    prevState = gameState
                                     gameState = "move"
                                     activeButton = (row, column)
-                                } else if (gameState == "move") {
+                                    turnAmount += 1
+                                } else if (gameState == "move" && turnAmount >= 4) {
+                                    prevState = gameState
                                     moveButton(row, column)
+                                    turnAmount += 1
                                 } else if (gameState == "add") {
                                     if board[row][column] == nil {
+                                        prevState = gameState
                                         board[row][column] = currentPlayer
                                         currentPlayer =
                                             currentPlayer == .x ? .o : .x
                                         checkForWinner()
+                                        turnAmount += 1
                                     }
-                                } else if (gameState == "grid") {
+                                } else if (gameState == "grid" && turnAmount >= 4) {
+                                    prevState = gameState
                                     changeGridLocation(row, column)
+                                    turnAmount += 1
                                 }
                             },
                             label: {
@@ -103,9 +113,9 @@ struct GameBoardView: View {
                     .foregroundColor(.white)
                     .padding(.vertical)
                     .frame(maxWidth: .infinity)
-                    .background(gameState == "add" ? Color.blue : Color.gray)
+                    .background(gameState == "add" && prevState != "grid" && turnAmount >= 4 ? Color.blue : Color.gray)
                     .cornerRadius(10)
-                    .disabled(winner != nil || gameState == "move")
+                    .disabled(winner != nil || gameState == "move" || prevState == "grid" || turnAmount < 4)
             }
             .padding()
 
