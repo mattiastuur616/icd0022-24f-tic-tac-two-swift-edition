@@ -6,8 +6,12 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct AIGameBoardView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [.init(\Game.date)], animation: .bouncy)
+    private var games: [Game]
     
     @State private var currentPlayer: Player = .x
     @State private var board: [[Player?]] = Array(repeating: Array(repeating: nil, count: 5), count: 5)
@@ -46,6 +50,12 @@ struct AIGameBoardView: View {
                             Text("O buttons: \(oButtons)")
                             
                             HStack {
+                                Button("Save", action: saveGame)
+                                    .foregroundColor(.white)
+                                    .padding(.vertical)
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.green)
+                                    .cornerRadius(10)
                                 Button("Grid", action: changeStateToGrid)
                                     .foregroundColor(.white)
                                     .padding(.vertical)
@@ -53,6 +63,15 @@ struct AIGameBoardView: View {
                                     .background(gameState == "add" && prevState != "grid" && turnAmount >= 4 ? Color.blue : Color.gray)
                                     .cornerRadius(10)
                                     .disabled(winner != nil || gameState == "move" || prevState == "grid" || turnAmount < 4)
+                                NavigationLink(destination: SavedGamesView().modelContainer(for: Game.self)) {
+                                    Text("Load")
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color.green)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(10)
+                                }
+                                .navigationBarTitle("Home", displayMode: .inline)
                             }
                             .padding()
                             
@@ -250,6 +269,12 @@ struct AIGameBoardView: View {
                     }
                     
                     HStack {
+                        Button("Save", action: saveGame)
+                            .foregroundColor(.white)
+                            .padding(.vertical)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.green)
+                            .cornerRadius(10)
                         Button("Grid", action: changeStateToGrid)
                             .foregroundColor(.white)
                             .padding(.vertical)
@@ -257,6 +282,15 @@ struct AIGameBoardView: View {
                             .background(gameState == "add" && prevState != "grid" && turnAmount >= 4 ? Color.blue : Color.gray)
                             .cornerRadius(10)
                             .disabled(winner != nil || gameState == "move" || prevState == "grid" || turnAmount < 4)
+                        NavigationLink(destination: SavedGamesView().modelContainer(for: Game.self)) {
+                            Text("Load")
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.green)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                        }
+                        .navigationBarTitle("Home", displayMode: .inline)
                     }
                     .padding()
                     
@@ -286,6 +320,27 @@ struct AIGameBoardView: View {
                     loadSettings()
                 }
             }
+        }
+    }
+    
+    private func saveGame() {
+        let date = Date()
+        let currentPlayerString = currentPlayer.rawValue
+        let stringBoard: [[String]] = board.map { row in
+            row.map { player in
+                player?.rawValue ?? " "
+            }
+        }
+        let intGrid: [[Int]] = grid.map { tuple in
+            [tuple.0, tuple.1]
+        }
+        let newSavedGame = Game(date: date, currentPlayer: currentPlayerString, board: stringBoard, grid: intGrid, prevState: prevState, xButtons: xButtons, oButtons: oButtons)
+        do {
+            modelContext.insert(newSavedGame)
+            try modelContext.save()
+            print("Saved successfully")
+        } catch {
+            print("Error saving the game: \(error)")
         }
     }
     
@@ -496,5 +551,5 @@ struct AIGameBoardView: View {
 }
 
 #Preview {
-    AIGameBoardView()
+    AIGameBoardView().modelContainer(for: Game.self)
 }
