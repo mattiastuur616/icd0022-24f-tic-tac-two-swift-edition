@@ -39,6 +39,12 @@ struct SavedGamesView: View {
         for index in offsets {
             let game = games[index]
             modelContext.delete(game)
+            do {
+                try modelContext.save()
+                print("Saved successfully")
+            } catch {
+                print("Error removing the game: \(error)")
+            }
         }
     }
 }

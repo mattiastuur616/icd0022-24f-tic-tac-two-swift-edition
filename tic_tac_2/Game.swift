@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final public class Game : Identifiable  {
+final public class Game : ObservableObject, Identifiable  {
     
     var date: Date
     var currentPlayer: String
