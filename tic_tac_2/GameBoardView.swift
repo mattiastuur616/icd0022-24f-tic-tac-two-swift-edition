@@ -75,6 +75,9 @@ struct GameBoardView: View {
                                         .foregroundColor(.white)
                                         .cornerRadius(10)
                                 }
+                                .simultaneousGesture(TapGesture().onEnded {
+                                    prevState = "load"
+                                })
                                 .navigationBarTitle("Home", displayMode: .inline)
                                 .disabled(winner != nil)
                             }
@@ -114,36 +117,7 @@ struct GameBoardView: View {
                                     ForEach(0..<5) { column in
                                         Button(
                                             action: {
-                                                if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
-                                                    prevState = gameState
-                                                    gameState = "move"
-                                                    activeButton = (row, column)
-                                                } else if (gameState == "move" && turnAmount >= 4) {
-                                                    prevState = gameState
-                                                    moveButton(row, column)
-                                                    turnAmount += 1
-                                                } else if (gameState == "add") {
-                                                    if ((currentPlayer == .x && xButtons > 0) || (currentPlayer == .o && oButtons > 0)) {
-                                                        if board[row][column] == nil {
-                                                            prevState = gameState
-                                                            board[row][column] = currentPlayer
-                                                            if (currentPlayer == .x) {
-                                                                xButtons -= 1
-                                                            } else {
-                                                                oButtons -= 1
-                                                            }
-                                                            currentPlayer =
-                                                            currentPlayer == .x ? .o : .x
-                                                            checkForWinner()
-                                                            turnAmount += 1
-                                                            saveGameState()
-                                                        }
-                                                    }
-                                                } else if (gameState == "grid" && turnAmount >= 4) {
-                                                    prevState = gameState
-                                                    changeGridLocation(row, column)
-                                                    turnAmount += 1
-                                                }
+                                                chooseTurnType(row, column)
                                             },
                                             label: {
                                                 ZStack {
@@ -196,36 +170,7 @@ struct GameBoardView: View {
                             ForEach(0..<5) { column in
                                 Button(
                                     action: {
-                                        if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
-                                            prevState = gameState
-                                            gameState = "move"
-                                            activeButton = (row, column)
-                                        } else if (gameState == "move" && turnAmount >= 4) {
-                                            prevState = gameState
-                                            moveButton(row, column)
-                                            turnAmount += 1
-                                        } else if (gameState == "add") {
-                                            if ((currentPlayer == .x && xButtons > 0) || (currentPlayer == .o && oButtons > 0)) {
-                                                if board[row][column] == nil {
-                                                    prevState = gameState
-                                                    board[row][column] = currentPlayer
-                                                    if (currentPlayer == .x) {
-                                                        xButtons -= 1
-                                                    } else {
-                                                        oButtons -= 1
-                                                    }
-                                                    currentPlayer =
-                                                    currentPlayer == .x ? .o : .x
-                                                    checkForWinner()
-                                                    turnAmount += 1
-                                                    saveGameState()
-                                                }
-                                            }
-                                        } else if (gameState == "grid" && turnAmount >= 4) {
-                                            prevState = gameState
-                                            changeGridLocation(row, column)
-                                            turnAmount += 1
-                                        }
+                                        chooseTurnType(row, column)
                                     },
                                     label: {
                                         ZStack {
@@ -276,6 +221,9 @@ struct GameBoardView: View {
                                 .foregroundColor(.white)
                                 .cornerRadius(10)
                         }
+                        .simultaneousGesture(TapGesture().onEnded {
+                            prevState = "load"
+                        })
                         .navigationBarTitle("Home", displayMode: .inline)
                         .disabled(winner != nil)
                     }
@@ -310,6 +258,44 @@ struct GameBoardView: View {
         }
     }
     
+    private func chooseTurnType(_ row: Int, _ column: Int) {
+        if (gameState == "add" && board[row][column] == currentPlayer && turnAmount >= 4) {
+            prevState = gameState
+            gameState = "move"
+            activeButton = (row, column)
+        } else if (gameState == "move" && turnAmount >= 4) {
+            prevState = gameState
+            moveButton(row, column)
+            turnAmount += 1
+        } else if (gameState == "add") {
+            if ((currentPlayer == .x && xButtons > 0) || (currentPlayer == .o && oButtons > 0)) {
+                if board[row][column] == nil {
+                    prevState = gameState
+                    board[row][column] = currentPlayer
+                    if (currentPlayer == .x) {
+                        xButtons -= 1
+                    } else {
+                        oButtons -= 1
+                    }
+                    currentPlayer =
+                    currentPlayer == .x ? .o : .x
+                    checkForWinner()
+                    turnAmount += 1
+                    saveGameState()
+                }
+            }
+        } else if (gameState == "grid" && turnAmount >= 4) {
+            prevState = gameState
+            changeGridLocation(row, column)
+            turnAmount += 1
+        }
+    }
+    
+    private func saveGameState() {
+        UserDefaults.standard.set(xButtons, forKey: "xButtons")
+        UserDefaults.standard.set(oButtons, forKey: "oButtons")
+    }
+    
     private func saveGame() {
         let date = Date()
         let currentPlayerString = currentPlayer.rawValue
@@ -318,10 +304,11 @@ struct GameBoardView: View {
                 player?.rawValue ?? " "
             }
         }
+        print(grid)
         let intGrid: [[Int]] = grid.map { tuple in
             [tuple.0, tuple.1]
         }
-        let newSavedGame = Game(date: date, currentPlayer: currentPlayerString, board: stringBoard, grid: intGrid, prevState: prevState, xButtons: xButtons, oButtons: oButtons)
+        let newSavedGame = Game(date: date, currentPlayer: currentPlayerString, board: stringBoard, grid: intGrid, prevState: prevState, xButtons: xButtons, oButtons: oButtons, turnAmount: turnAmount, gridCenterX: gridCenter.0, gridCenterY: gridCenter.1)
         do {
             modelContext.insert(newSavedGame)
             try modelContext.save()
@@ -330,14 +317,48 @@ struct GameBoardView: View {
             print("Error saving the game: \(error)")
         }
     }
-
-    private func saveGameState() {
-        UserDefaults.standard.set(xButtons, forKey: "xButtons")
-        UserDefaults.standard.set(oButtons, forKey: "oButtons")
-    }
     
     private func loadSettings() {
-        if (prevState == "begin") {
+        if (prevState == "load") {
+            if let loadCurrentPlayer = UserDefaults.standard.value(forKey: "loadCurrentPlayer") as? String {
+                if (loadCurrentPlayer == "X") {
+                    currentPlayer = .x
+                } else {
+                    currentPlayer = .o
+                }
+            }
+            if let loadPrevState = UserDefaults.standard.value(forKey: "loadPrevState") as? String {
+                prevState = loadPrevState
+            }
+            if let loadXButtons = UserDefaults.standard.value(forKey: "loadXButtons") as? Int {
+                xButtons = loadXButtons
+            }
+            if let loadOButtons = UserDefaults.standard.value(forKey: "loadOButtons") as? Int {
+                oButtons = loadOButtons
+            }
+            if let loadBoard = UserDefaults.standard.value(forKey: "loadBoard") as? [[String]] {
+                board = loadBoard.map { row in
+                    row.map { value in
+                        Player(rawValue: value)
+                    }
+                }
+            }
+            if let loadGrid = UserDefaults.standard.value(forKey: "loadGrid") as? [[Int]] {
+                for i in 0..<grid.count {
+                    grid[i].0 = loadGrid[i][0]
+                    grid[i].1 = loadGrid[i][1]
+                }
+            }
+            if let loadTurnAmount = UserDefaults.standard.value(forKey: "loadTurnAmount") as? Int {
+                turnAmount = loadTurnAmount
+            }
+            if let loadGridCenterX = UserDefaults.standard.value(forKey: "loadGridCenterX") as? Int {
+                gridCenter.0 = loadGridCenterX
+            }
+            if let loadGridCenterY = UserDefaults.standard.value(forKey: "loadGridCenterY") as? Int {
+                gridCenter.1 = loadGridCenterY
+            }
+        } else if (prevState == "begin") {
             if let savedValue = UserDefaults.standard.value(forKey: settingsKey) as? Int {
                 xButtons = savedValue
                 oButtons = savedValue
@@ -352,14 +373,6 @@ struct GameBoardView: View {
         }
     }
     
-    func changeStateToGrid() {
-        if (gameState == "add") {
-            gameState = "grid"
-        } else {
-            gameState = "add"
-        }
-    }
-    
     func disableButtons(_ row: Int, _ column: Int) -> Bool {
         return (gameState == "add" && (board[row][column] != nil && board[row][column] != currentPlayer)) ||
         winner != nil ||
@@ -367,6 +380,14 @@ struct GameBoardView: View {
         !grid.contains(where: { $0 == (row, column) }) ||
         (gameState == "grid" && (row == 0 || row == 4 || column == 0 || column == 4))
         || (gameState == "move" && board[row][column] != nil && activeButton != (row, column))
+    }
+    
+    func changeStateToGrid() {
+        if (gameState == "add") {
+            gameState = "grid"
+        } else {
+            gameState = "add"
+        }
     }
     
     func changeGridLocation(_ row: Int, _ col: Int) {
@@ -474,7 +495,6 @@ struct GameBoardView: View {
     }
 }
 
-
-#Preview("Preview 1") {
+#Preview() {
     GameBoardView().modelContainer(for: Game.self)
 }

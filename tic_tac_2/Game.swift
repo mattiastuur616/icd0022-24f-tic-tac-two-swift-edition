@@ -18,8 +18,12 @@ final public class Game : ObservableObject, Identifiable  {
     var prevState: String
     var xButtons: Int
     var oButtons: Int
+    var turnAmount: Int
+    var gridCenterX: Int
+    var gridCenterY: Int
     
-    init(date: Date, currentPlayer: String, board: [[String]], grid: [[Int]], prevState: String, xButtons: Int, oButtons: Int) {
+    init(date: Date, currentPlayer: String, board: [[String]], grid: [[Int]], prevState: String,
+         xButtons: Int, oButtons: Int, turnAmount: Int, gridCenterX: Int, gridCenterY: Int) {
         self.date = date
         self.currentPlayer = currentPlayer
         self.board = board
@@ -27,5 +31,8 @@ final public class Game : ObservableObject, Identifiable  {
         self.prevState = prevState
         self.xButtons = xButtons
         self.oButtons = oButtons
+        self.turnAmount = turnAmount
+        self.gridCenterX = gridCenterX
+        self.gridCenterY = gridCenterY
     }
 }
