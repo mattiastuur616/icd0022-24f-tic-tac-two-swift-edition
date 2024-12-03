@@ -73,7 +73,7 @@ struct AIGameBoardView: View {
                                         .cornerRadius(10)
                                 }
                                 .simultaneousGesture(TapGesture().onEnded {
-                                    prevState = "load"
+                                    saveCurrentContent()
                                 })
                                 .navigationBarTitle("Home", displayMode: .inline)
                                 .disabled(winner != nil)
@@ -219,7 +219,7 @@ struct AIGameBoardView: View {
                                 .cornerRadius(10)
                         }
                         .simultaneousGesture(TapGesture().onEnded {
-                            prevState = "load"
+                            saveCurrentContent()
                         })
                         .navigationBarTitle("Home", displayMode: .inline)
                         .disabled(winner != nil)
@@ -253,6 +253,28 @@ struct AIGameBoardView: View {
                 }
             }
         }
+    }
+    
+    private func saveCurrentContent() {
+        prevState = "load"
+        let currentPlayerString = currentPlayer.rawValue
+        let stringBoard: [[String]] = board.map { row in
+            row.map { player in
+                player?.rawValue ?? " "
+            }
+        }
+        let intGrid: [[Int]] = grid.map { tuple in
+            [tuple.0, tuple.1]
+        }
+        UserDefaults.standard.set(currentPlayerString, forKey: "loadCurrentPlayer")
+        UserDefaults.standard.set(stringBoard, forKey: "loadBoard")
+        UserDefaults.standard.set(intGrid, forKey: "loadGrid")
+        UserDefaults.standard.set(prevState, forKey: "loadPrevState")
+        UserDefaults.standard.set(xButtons, forKey: "loadXButtons")
+        UserDefaults.standard.set(oButtons, forKey: "loadOButtons")
+        UserDefaults.standard.set(turnAmount, forKey: "loadTurnAmount")
+        UserDefaults.standard.set(gridCenter.0, forKey: "loadGridCenterX")
+        UserDefaults.standard.set(gridCenter.1, forKey: "loadGridCenterY")
     }
     
     private func chooseTurnType(_ row: Int, _ column: Int) {
