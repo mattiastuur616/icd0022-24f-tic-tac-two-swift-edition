@@ -449,6 +449,13 @@ struct GameBoardView: View {
             {
                 winner = player
                 winningCells = Set([[grid[row].0, grid[row].1], [grid[row+1].0, grid[row+1].1], [grid[row+2].0, grid[row+2].1]])
+                if (winner?.rawValue == "X") {
+                    let savedXWins2Player = UserDefaults.standard.value(forKey: "xWins2Player") as? Int ?? 0
+                    UserDefaults.standard.set(savedXWins2Player + 1, forKey: "xWins2Player")
+                } else {
+                    let savedOWins2Player = UserDefaults.standard.value(forKey: "oWins2Player") as? Int ?? 0
+                    UserDefaults.standard.set(savedOWins2Player + 1, forKey: "oWins2Player")
+                }
                 return
             }
         }
@@ -460,6 +467,13 @@ struct GameBoardView: View {
             {
                 winner = player
                 winningCells = Set([[grid[col].0, grid[col].1], [grid[col+3].0, grid[col+3].1], [grid[col+6].0, grid[col+6].1]])
+                if (winner?.rawValue == "X") {
+                    let savedXWins2Player = UserDefaults.standard.value(forKey: "xWins2Player") as? Int ?? 0
+                    UserDefaults.standard.set(savedXWins2Player + 1, forKey: "xWins2Player")
+                } else {
+                    let savedOWins2Player = UserDefaults.standard.value(forKey: "oWins2Player") as? Int ?? 0
+                    UserDefaults.standard.set(savedOWins2Player + 1, forKey: "oWins2Player")
+                }
                 return
             }
         }
@@ -470,6 +484,13 @@ struct GameBoardView: View {
         {
             winner = player
             winningCells = Set([[grid[0].0, grid[0].1], [grid[4].0, grid[4].1], [grid[8].0, grid[8].1]])
+            if (winner?.rawValue == "X") {
+                let savedXWins2Player = UserDefaults.standard.value(forKey: "xWins2Player") as? Int ?? 0
+                UserDefaults.standard.set(savedXWins2Player + 1, forKey: "xWins2Player")
+            } else {
+                let savedOWins2Player = UserDefaults.standard.value(forKey: "oWins2Player") as? Int ?? 0
+                UserDefaults.standard.set(savedOWins2Player + 1, forKey: "oWins2Player")
+            }
             return
         }
         //diag2
@@ -479,6 +500,13 @@ struct GameBoardView: View {
         {
             winner = player
             winningCells = Set([[grid[2].0, grid[2].1], [grid[4].0, grid[4].1], [grid[6].0, grid[6].1]])
+            if (winner?.rawValue == "X") {
+                let savedXWins2Player = UserDefaults.standard.value(forKey: "xWins2Player") as? Int ?? 0
+                UserDefaults.standard.set(savedXWins2Player + 1, forKey: "xWins2Player")
+            } else {
+                let savedOWins2Player = UserDefaults.standard.value(forKey: "oWins2Player") as? Int ?? 0
+                UserDefaults.standard.set(savedOWins2Player + 1, forKey: "oWins2Player")
+            }
             return
         }
         
